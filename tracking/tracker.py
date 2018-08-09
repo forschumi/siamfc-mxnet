@@ -28,7 +28,6 @@ def tracker(params, frame_name_list, pos_x, pos_y, target_w, target_h, final_sco
     # stores tracker's output for evaluation
     bboxes = np.zeros((num_frames,4))
     bboxes[0,:] = [pos_x-target_w/2, pos_y-target_h/2, target_w, target_h]    
-    scale_factors = params.scale_step ** np.linspace(np.ceil(params.scale_num/2 - params.scale_num), np.floor(params.scale_num/2), params.scale_num)
     # cosine window to penalize large displacements   
     window_hann_1d = np.expand_dims(np.hanning(final_score_sz), axis=0)
     window_hann_2d = np.transpose(window_hann_1d) * window_hann_1d
@@ -37,6 +36,7 @@ def tracker(params, frame_name_list, pos_x, pos_y, target_w, target_h, final_sco
     context = params.context * (target_w + target_h)
     z_sz = np.sqrt(np.prod((target_w + context) * (target_h + context)))
     x_sz = float(params.search_sz) / params.exemplar_sz * z_sz
+    scale_factors = params.scale_step ** np.linspace(np.ceil(params.scale_num/2 - params.scale_num), np.floor(params.scale_num/2), params.scale_num)
     # Load Video Information
     z = image.imread(frame_name_list[0]).astype('float32') # H W C
     frame_sz = z.shape # H W C
@@ -45,11 +45,12 @@ def tracker(params, frame_name_list, pos_x, pos_y, target_w, target_h, final_sco
     else:
         avg_chan = None
     
-    siamfc = siamese.SiamFC()
-    siamfc.collect_params().initialize(ctx=ctx)
     frame_padded_z, npad_z = pad_frame(z, frame_sz, pos_x, pos_y, z_sz, avg_chan)
     z_crops = extract_crops_z(frame_padded_z, npad_z, pos_x, pos_y, z_sz, params.exemplar_sz)
-    z_crops = nd.transpose(z_crops, (0,3,2,1)) # B C H W
+    z_crops = nd.transpose(z_crops, (0,3,1,2)) # B C H W
+    
+    siamfc = siamese.SiamFC()
+    siamfc.collect_params().initialize(ctx=ctx)
     templates_z = siamfc.net(z_crops.as_in_context(ctx))
     new_templates_z = templates_z.copy()
     
@@ -65,7 +66,7 @@ def tracker(params, frame_name_list, pos_x, pos_y, target_w, target_h, final_sco
         x = image.imread(frame_name_list[i]).astype('float32') # H W C
         frame_padded_x, npad_x = pad_frame(x, frame_sz, pos_x, pos_y, x_sz, avg_chan)
         x_crops = extract_crops_x(frame_padded_x, npad_x, pos_x, pos_y, *scaled_search_area, params.search_sz)
-        x_crops = mx.nd.transpose(x_crops, (0,3,2,1)) # 
+        x_crops = nd.transpose(x_crops, (0,3,1,2)) # 
         templates_x = siamfc.net(x_crops.as_in_context(ctx))        
         scores = siamfc.match_templates(templates_z, templates_x)
         scores_up = nd.zeros(shape=[3, final_score_sz, final_score_sz], ctx = ctx)
@@ -92,7 +93,7 @@ def tracker(params, frame_name_list, pos_x, pos_y, target_w, target_h, final_sco
                 avg_chan = None
             frame_padded_z, npad_z = pad_frame(x, frame_sz, pos_x, pos_y, z_sz, avg_chan)
             z_crops = extract_crops_z(frame_padded_z, npad_z, pos_x, pos_y, z_sz, params.exemplar_sz)
-            z_crops = nd.transpose(z_crops, (0,3,2,1))
+            z_crops = nd.transpose(z_crops, (0,3,1,2))
             new_templates_z = siamfc.net(z_crops.as_in_context(ctx))
             templates_z = (1 - params.z_lr) * templates_z + params.z_lr * new_templates_z
         if params.visualization:
@@ -107,11 +108,11 @@ def tracker(params, frame_name_list, pos_x, pos_y, target_w, target_h, final_sco
 def pad_frame(im, frame_sz, pos_x, pos_y, patch_sz, avg_chan):
     pos_x = nd.array([pos_x])
     pos_y = nd.array([pos_y])
-    c = np.round(patch_sz) / 2
-    xleft_pad = nd.maximum(0, -nd.round(pos_x - c).astype('int32'))
-    ytop_pad = nd.maximum(0, -nd.round(pos_y - c).astype('int32'))
-    xright_pad = nd.maximum(0, nd.round(pos_x + c).astype('int32') - frame_sz[1])
-    ybottom_pad = nd.maximum(0, nd.round(pos_y + c).astype('int32') - frame_sz[0])
+    cen = np.round(patch_sz) / 2
+    xleft_pad = nd.maximum(0, -nd.round(pos_x - cen).astype('int32'))
+    ytop_pad = nd.maximum(0, -nd.round(pos_y - cen).astype('int32'))
+    xright_pad = nd.maximum(0, nd.round(pos_x + cen).astype('int32') - frame_sz[1])
+    ybottom_pad = nd.maximum(0, nd.round(pos_y + cen).astype('int32') - frame_sz[0])
     npad = nd.max(nd.concat(xleft_pad, ytop_pad, xright_pad, ybottom_pad, dim = 0)).asscalar()
     paddings = [0, 0, 0, 0, npad, npad, npad, npad]
     im_padded = nd.expand_dims(im, axis = 0) # B H W C
@@ -127,13 +128,13 @@ def pad_frame(im, frame_sz, pos_x, pos_y, patch_sz, avg_chan):
 def extract_crops_z(im, npad, pos_x, pos_y, sz_src, sz_dst):
     pos_x = nd.array([pos_x])
     pos_y = nd.array([pos_y])
-    c = np.round(sz_src + 1) / 2
-    # get top-right corner of bbox and consider padding
-    tl_x = nd.maximum(0, npad + nd.floor(pos_x - c))
-    tl_y = nd.maximum(0, npad + nd.floor(pos_y - c))
+    cen = np.round(sz_src / 2)
+    # get top-left corner of bbox and consider padding
+    tl_x = nd.maximum(0, npad + nd.floor(pos_x - cen))
+    tl_y = nd.maximum(0, npad + nd.floor(pos_y - cen))
     # Compute size from rounded co-ords to ensure rectangle lies inside padding.
-    width = nd.maximum(0, nd.round(pos_x + c) - nd.round(pos_x - c))
-    height = nd.maximum(0, nd.round(pos_y + c) - nd.round(pos_y - c))
+    width = nd.maximum(0, nd.round(pos_x + cen) - nd.round(pos_x - cen))
+    height = nd.maximum(0, nd.round(pos_y + cen) - nd.round(pos_y - cen))
     crop = image.fixed_crop(im,
                             x0 = int(tl_x.asscalar()),
                             y0 = int(tl_y.asscalar()),
@@ -152,28 +153,35 @@ def extract_crops_x(im, npad, pos_x, pos_y, sz_src0, sz_src1, sz_src2, sz_dst):
     pos_x = nd.array([pos_x])
     pos_y = nd.array([pos_y])
     sz_src0, sz_src1, sz_src2 = nd.array([sz_src0, sz_src1, sz_src2])
-    c = nd.round(sz_src2 + 1) / 2
-    # get top-right corner of bbox and consider padding
-    tr_x = nd.maximum(0, npad + nd.floor(pos_x - c))
-    tr_y = nd.maximum(0, npad + nd.floor(pos_y - c))
+    cen = nd.round(sz_src2 / 2)
+    # get top-left corner of bbox and consider padding
+    tl_y = nd.maximum(0, npad + nd.floor(pos_y - cen))
+    tl_x = nd.maximum(0, npad + nd.floor(pos_x - cen))
     # Compute size from rounded co-ords to ensure rectangle lies inside padding.
-    width = nd.maximum(0, nd.round(pos_x + c) - nd.round(pos_x - c))
-    height = nd.maximum(0, nd.round(pos_y + c) - nd.round(pos_y - c))
+    height_ = nd.maximum(0, nd.floor(pos_y + cen) - nd.floor(pos_y - cen))
+    width_ = nd.maximum(0, nd.floor(pos_x + cen) - nd.floor(pos_x - cen))
+    height = nd.minimum(height_, im.shape[0] - tl_y)
+    width = nd.minimum(width_, im.shape[1] - tl_x)
+       
     search_area = image.fixed_crop(im,
-                                   int(tr_x.asscalar()),
-                                   int(tr_y.asscalar()),                                   
+                                   int(tl_x.asscalar()),
+                                   int(tl_y.asscalar()),                                   
                                    int(width.asscalar()),
                                    int(height.asscalar()),                                   
                                    )
 
     offset_s0 = np.round((sz_src2 - sz_src0) / 2)
     offset_s1 = np.round((sz_src2 - sz_src1) / 2)
-
+    sz_src0_0 = nd.minimum(sz_src0, search_area.shape[0] - offset_s0)
+    sz_src0_1 = nd.minimum(sz_src0, search_area.shape[1] - offset_s0)
+    sz_src1_0 = nd.minimum(sz_src1, search_area.shape[0] - offset_s1)
+    sz_src1_1 = nd.minimum(sz_src1, search_area.shape[1] - offset_s1)
+    
     crop_s0 = image.fixed_crop(search_area,
                                int(offset_s0.asscalar()),
                                int(offset_s0.asscalar()),
-                               int(sz_src0.asscalar()),
-                               int(sz_src0.asscalar()),
+                               int(sz_src0_1.asscalar()),
+                               int(sz_src0_0.asscalar()),
                                size = [sz_dst, sz_dst],
                                interp = 1
                                )
@@ -181,8 +189,8 @@ def extract_crops_x(im, npad, pos_x, pos_y, sz_src0, sz_src1, sz_src2, sz_dst):
     crop_s1 = image.fixed_crop(search_area,
                                int(offset_s1.asscalar()),
                                int(offset_s1.asscalar()),
-                               int(sz_src1.asscalar()),
-                               int(sz_src1.asscalar()),
+                               int(sz_src1_1.asscalar()),
+                               int(sz_src1_0.asscalar()),
                                size = [sz_dst, sz_dst],
                                interp = 1
                                )
