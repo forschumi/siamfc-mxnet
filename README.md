@@ -2,8 +2,8 @@
 MXNet/gluon port of the tracking method described in the paper [*Fully-Convolutional Siamese nets for object tracking*](https://www.robots.ox.ac.uk/~luca/siamese-fc.html).
 
 ## Running the tracker
-1) Set `video` from `params/params.json` to `"all"` or to a specific sequence (e.g. `"Basketball" or "Soccer"`)
-1) See if you are happy with the default parameters in `params/params.json`
+1) Set `video` from `hyperparams/params.json` to `"all"` or to a specific sequence (e.g. `"Basketball" or "Soccer"`)
+1) See if you are happy with the default parameters in `hyperparams/params.json`
 1) Call the main script (within an active virtualenv session)
 `python run_tracker.py`
 
