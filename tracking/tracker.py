@@ -13,6 +13,8 @@ import numpy as np
 import sys
 import cv2
 sys.path.append('../')
+import matplotlib.patches as patches
+import matplotlib.pyplot as plt
 
 def tracker(siamfc, params, frame_name_list, pos_x, pos_y, target_w, target_h, ctx=mx.cpu()):
     pos_x = pos_x - 1
@@ -80,6 +82,9 @@ def tracker(siamfc, params, frame_name_list, pos_x, pos_y, target_w, target_h, c
         target_h = (1 - params.scaleLR) * target_h + params.scaleLR * scaledTarget_y[newScale]
         bboxes[i-params.startFrame, :] = pos_x + 1 - target_w / 2, pos_y + 1 - target_h / 2, target_w, target_h
         
+		if params.visualization:
+            show_frame(x.asnumpy(), bboxes[i-params.startFrame, :], 1)
+		
     t_elapsed = time.time() - t_start + 1
     speed = (nImgs - 1) / t_elapsed
     
@@ -195,6 +200,17 @@ def tracker_step(responseMaps, pos_x, pos_y, s_x, window, params):
     
     return new_pos_x, new_pos_y, bestScale
 
+def show_frame(frame, bbox, fig_n):
+    fig = plt.figure(fig_n)
+    ax = fig.add_subplot(111)
+    r = patches.Rectangle((bbox[0],bbox[1]), bbox[2], bbox[3], linewidth=2, edgecolor='r', fill=False)
+    ax.imshow(np.uint8(frame))
+    ax.add_patch(r)
+    plt.ion()
+    plt.show()
+    plt.pause(0.001)
+    plt.clf()	
+	
 def _try_gpu():
     try:
         ctx = mx.gpu()

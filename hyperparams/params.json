@@ -8,7 +8,7 @@
 	"minSFactor": 0.2,
 	"maxSFactor": 5,
 	"zLR": 0.01,
-	"visualization": 0,
+	"visualization": 1,
 	"gpus": [1],
 	"startFrame": 0,
 	"scoreSize": 33,
@@ -26,6 +26,6 @@
 	"root_network": "./nets",
 	"root_parameter": "./hyperparams",
 	"root_dataset": "./sequences",
-	"video": ["Soccer"],
+	"video": ["Girl"],
 	"all": false
 }
