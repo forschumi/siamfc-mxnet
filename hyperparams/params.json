@@ -25,7 +25,7 @@
 	"stop_on_failure": 0,
 	"root_network": "./nets",
 	"root_parameter": "./hyperparams",
-	"root_dataset": "$PATH/TO/YOUR/OTB$",
-	"video": ["David"],
-	"all": true
+	"root_dataset": "./sequences",
+	"video": ["Soccer"],
+	"all": false
 }
