@@ -57,7 +57,7 @@ def main():
                          'startFrame': startFrame}
             results = np.zeros((1,), dtype=np.object)
             results[0] = results_
-            sio.savemat('results/'+videos_list[i]+'_SimaFC_MXNet.mat', {'results' : results})
+            sio.savemat('results/'+videos_list[i]+'_SiamFC_MXNet.mat', {'results' : results})
         tot_frames = np.sum(lengths)
         mean_precision = np.sum(precisions * lengths) / tot_frames
         mean_precision_auc = np.sum(precisions_auc * lengths) / tot_frames
@@ -99,7 +99,7 @@ def main():
                          'startFrame': startFrame}
             results = np.zeros((1,), dtype=np.object)
             results[0] = results_
-            sio.savemat('results/'+params.video[i]+'_SimaFC_MXNet.mat', {'results' : results})
+            sio.savemat('results/'+params.video[i]+'_SiamFC_MXNet.mat', {'results' : results})
 
 
 def _compile_results(gt, bboxes, dist_threshold, iou_threshold):

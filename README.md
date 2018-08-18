@@ -11,13 +11,13 @@
 | Tracker           | OTB2013       | OTB2015       |
 | ----------------- | ------------- | ------------- |
 | paper (3s)        | 60.8          | 58.2          |
-| ours              | 63.8          | 58.3          |
+| ours              | 63.8          | 58.8          |
 
 ## Precision (%) on OTB
 | Tracker           | OTB2013       | OTB2015       |
 | ----------------- | ------------- | ------------- |
 | paper (3s)        | 80.9          | 77.3          |
-| ours              | 82.4          | 75.2          |
+| ours              | 82.4          | 76.0          |
 
 ## Note
 Some errors in `resize` need to be fixed
