@@ -6,21 +6,22 @@
 1) Set `all` from `hyperparams/params.json` to `true` or to set one or more specific sequences (e.g. `Basketball` and/or `Soccer`) in `video` with setting `all` to `false`
 1) See if you are happy with the default parameters in `hyperparams/params.json`
 1) Call the main script `python run_tracker.py`
+1) The results.mat can be found in `results` which you can run on OTB
 
 ## AUC (%) on OTB
-| Tracker           | OTB2013       | OTB2015       |
-| ----------------- | ------------- | ------------- |
-| paper (3s)        | 60.8          | 58.2          |
-| ours              | 63.8          | 58.8          |
+| Tracker             | OTB2013       | OTB2015       |
+| ------------------  | ------------- | ------------- |
+| paper (SiamFC_3s)   | 60.8          | 58.2          |
+| ours (SiamFC_MXnet) | 60.9          | 58.8          |
 
 ## Precision (%) on OTB
-| Tracker           | OTB2013       | OTB2015       |
-| ----------------- | ------------- | ------------- |
-| paper (3s)        | 80.9          | 77.3          |
-| ours              | 82.4          | 76.0          |
+| Tracker             | OTB2013       | OTB2015       |
+| -----------------   | ------------- | ------------- |
+| paper (SiamFC_3s)   | 80.9          | 77.3          |
+| ours (SiamFC_MXnet) | 81.4          | 76.7          |
 
 ## Note
-Some errors in `resize` need to be fixed
+Some errors in `fixed_crop` and `resize` need to be fixed, which caused me a lot of headaches
 
 ## References
 ```
