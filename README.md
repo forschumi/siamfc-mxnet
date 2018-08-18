@@ -3,7 +3,7 @@
 
 ## Running the tracker
 1) Set `root_dataset` in `hyperparams/params.json` to your dataset path
-1) Set `all` from `hyperparams/params.json` to `true` or to set one or more specific sequences (e.g. `"Basketball" and/or "Soccer"`) in `video` with setting `all` to `false`
+1) Set `all` from `hyperparams/params.json` to `true` or to set one or more specific sequences (e.g. `Basketball` and/or `Soccer`) in `video` with setting `all` to `false`
 1) See if you are happy with the default parameters in `hyperparams/params.json`
 1) Call the main script (within an active virtualenv session)
 `python run_tracker.py`
@@ -29,7 +29,7 @@ Some errors in `resize` need to be fixed
   title={Fully-Convolutional Siamese Networks for Object Tracking},
   author={Bertinetto, Luca and Valmadre, Jack and Henriques, Joao F and Vedaldi, Andrea and Torr, Philip H S},
   booktitle={ECCV 2016 Workshops},
-  pages={850-865},
+  pages={850--865},
   year={2016}
 }
 ```

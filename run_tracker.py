@@ -40,7 +40,7 @@ def main():
             if videos_list[i] == "David":
                 startFrame = 300
             else:
-                startFrame = params.startFrame
+                startFrame = params.startFrame + 1
             pos_x, pos_y, target_w, target_h = _region_to_bbox(gt[params.startFrame], center = True)
             bboxes, speed_ = tracker(siamfc, params, frame_name_list, pos_x, pos_y, target_w, target_h, ctx=ctx)
             lengths[i], precisions[i], precisions_auc[i], ious[i] = _compile_results(gt, bboxes, params.dist_threshold, params.iou_threshold)
