@@ -26,14 +26,6 @@ assert len(_conv_stride) == len(_filtergroup_yn) == len(_bnorm_yn) == len(_relu_
 assert all(_conv_stride) >= True, ('The number of conv layers is assumed to define the depth of the network')
 _num_layers = len(_conv_stride)
 
-class SiamInit(init.Initializer):
-    def __init__(self, w):
-        super(SiamInit, self).__init__()
-        self._verbose = True
-        self.w = nd.array(w)
-    def _init_weight(self, _, arr):
-        nd.reshape(self.w, out = arr, shape = arr.shape)     
-
 class SiamFC(nn.Block):
     def __init__(self, verbose=False, **kwargs):
         super(SiamFC, self).__init__(**kwargs)
@@ -74,28 +66,6 @@ class SiamFC(nn.Block):
         net_final_ = np.transpose(net_final_, axes = (1, 2, 3, 0))
         net_final = net_final_[0]
         return net_final
-
-def _import_from_matconvnet(net_path):
-    mat = sio.loadmat(net_path)
-    nets = mat.get('net')
-    params = nets['params']
-    params = params[0][0]
-    params_names = params['name'][0]
-    params_values = params['value'][0]
-    params_names_list = [params_names[p][0] for p in range(params_names.size)]
-    params_values_list_ = [params_values[p] for p in range(params_values.size)]
-    params_values_list=[]
-    for i, p in enumerate(params_values_list_):
-        if len(p.shape) < 4:
-            params_values_list.append(p)
-        else:
-            params_values_list.append(np.transpose(p, axes=(3,2,0,1))) # FN FC FH FW
-    return params_names_list, params_values_list
-
-def _find_params(x, params):                                                                         
-    matching = [s for s in params if x in s]                                                         
-    assert len(matching) == 1, ('Ambiguous param name found')                                          
-    return matching 
 
 def _set_convolutional(net, out_c, in_c, kernel, stride, 
                        filtergroup = False, batchnorm = True, 
