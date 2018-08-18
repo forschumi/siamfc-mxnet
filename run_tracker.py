@@ -12,15 +12,20 @@ import numpy as np
 import sys
 sys.path.append('../')
 import os
+import scipy.io as sio
 from hyperparams.params import paramsInitial
+import nets.siamese as siamese
 from tracking.tracker import tracker
 
 def main():
     ctx = _try_gpu()
     params = paramsInitial()
-    final_score_sz = params.response_up * (params.score_sz - 1) + 1
+    siamfc = siamese.SiamFC()
+    siamfc.collect_params().initialize(ctx=ctx)
+    siamfc.net.load_params('./nets/siamfc_net.params')
+    siamfc.bn_final.load_params('./nets/siamfc_bn.params')
     # iterate through all videos of evaluation.dataset
-    if params.video == 'all':
+    if params.all is True:
         dataset_folder = os.path.join(params.root_dataset)
         videos_list = [v for v in os.listdir(dataset_folder)]
         videos_list.sort()
@@ -32,29 +37,38 @@ def main():
         lengths = np.zeros(nv)
         for i in range(nv):
             gt, frame_name_list, frame_sz, n_frames = _load_video_info(videos_list[i], params)
-            gt_ = gt[params.start_frame:, :]
-            frame_name_list_ = frame_name_list[params.start_frame:]
-            pos_x, pos_y, target_w, target_h = _region_to_bbox(gt_[0], center = True)
-            bboxes, speed = tracker(params, frame_name_list_, pos_x, pos_y, target_w, target_h,
-                                    final_score_sz, params.start_frame, ctx=ctx)
-            lengths[i], precisions[i], precisions_auc[i], ious[i] = _compile_results(gt_, bboxes, params.dist_threshold)
-            print(str(i) + ' -- ' + videos_list[i] + \
-                ' -- Precision ' + "(%d px)" % params.dist_threshold + ': ' + "%.2f" % precisions[i] +\
-                ' -- Precisions AUC: ' + "%.2f" % precisions_auc[i] + \
-                ' -- IOU: ' + "%.2f" % ious[i] + \
-                ' -- Speed: ' + "%.2f" % speed[i] + ' --')
+            if videos_list[i] == "David":
+                startFrame = 300
+            else:
+                startFrame = params.startFrame
+            pos_x, pos_y, target_w, target_h = _region_to_bbox(gt[params.startFrame], center = True)
+            bboxes, speed_ = tracker(siamfc, params, frame_name_list, pos_x, pos_y, target_w, target_h, ctx=ctx)
+            lengths[i], precisions[i], precisions_auc[i], ious[i] = _compile_results(gt, bboxes, params.dist_threshold)
+            speed[i] = speed_
+            print(str(i+1) + ' -- ' + videos_list[i])
+            print(' -- Precision (%d px): %.2f' % (params.dist_threshold, precisions[i]))            
+            print(' -- IOU: %.2f' % ious[i])
+            print(' -- Speed: %.2f' % speed_)
+            print(' -- Precisions AUC: %.2f' % (params.iou_threshold, precisions_auc[i]))
+            print(' --')
             print()
-
+            results_ =  {'type':'rect', 'res': bboxes, 'fps': speed_, \
+                         'len': len(frame_name_list), 'annoBegin': startFrame, \
+                         'startFrame': startFrame}
+            results = np.zeros((1,), dtype=np.object)
+            results[0] = results_
+            sio.savemat('results/'+videos_list[i]+'_SimaFC_MXNet.mat', {'results' : results})
         tot_frames = np.sum(lengths)
         mean_precision = np.sum(precisions * lengths) / tot_frames
         mean_precision_auc = np.sum(precisions_auc * lengths) / tot_frames
         mean_iou = np.sum(ious * lengths) / tot_frames
         mean_speed = np.sum(speed * lengths) / tot_frames
-        print('-- Overall stats (averaged per frame) on ' + str(nv) + ' videos (' + str(tot_frames) + ' frames) --')
-        print(' -- Precision ' + "(%d px)" % params.dist_threshold + ': ' + "%.2f" % mean_precision +\
-              ' -- Precisions AUC: ' + "%.2f" % mean_precision_auc +\
-              ' -- IOU: ' + "%.2f" % mean_iou +\
-              ' -- Speed: ' + "%.2f" % mean_speed + ' --')
+        print(' -- Overall stats (averaged per frame) on ' + str(nv) + ' videos (' + str(tot_frames) + ' frames) --')
+        print(' -- Precision (%d px): %.2f' % (params.dist_threshold, mean_precision)) 
+        print(' -- IOU: %.2f' % mean_iou)
+        print(' -- Speed: %.2f' % mean_speed)
+        print(' -- Precisions AUC: %.2f' % (params.iou_threshold, mean_precision_auc))
+        print(' --')
         print()
 
     else:
@@ -67,25 +81,35 @@ def main():
         lengths = np.zeros(nv)
         for i in range(nv):
             gt, frame_name_list, frame_sz, n_frames = _load_video_info(params.video[i], params)
-            pos_x, pos_y, target_w, target_h = _region_to_bbox(gt[params.start_frame], center = True)
-            bboxes, speed = tracker(params, frame_name_list, pos_x, pos_y, target_w, target_h,
-                                    final_score_sz, params.start_frame, ctx=ctx)
-            _, precision, precision_auc, iou = _compile_results(gt, bboxes, params.dist_threshold)
-            print(str(i) + ' -- ' + params.video[i] + \
-                  ' -- Precision ' + "(%d px)" % params.dist_threshold + ': ' + "%.2f" % precisions[i] +\
-                  ' -- Precision AUC: ' + "%.2f" % precision_auc[i] + \
-                  ' -- IOU: ' + "%.2f" % ious[i] + \
-                  ' -- Speed: ' + "%.2f" % speed[i] + ' --')
+            if params.video[i] == "David":
+                startFrame = 300
+            else:
+                startFrame = params.startFrame
+            pos_x, pos_y, target_w, target_h = _region_to_bbox(gt[params.startFrame], center = True)
+            bboxes, speed = tracker(siamfc, params, frame_name_list, pos_x, pos_y, target_w, target_h, ctx=ctx)
+            _, precision, precision_auc, iou = _compile_results(gt, bboxes, params.dist_threshold, params.iou_threshold)
+            print(str(i) + ' -- ' + params.video[i])
+            print('  -- Precision (%dpx): %.2f' % (params.dist_threshold, precision))
+            print('  -- IOU: %.2f' % iou)
+            print('  -- Speed: %.2f' % speed)
+            print('  -- Precision AUC (%.1f): %.2f' % (params.iou_threshold, precision_auc))
             print()
+            results_ =  {'type':'rect', 'res': bboxes, 'fps': speed, \
+                         'len': len(frame_name_list), 'annoBegin': startFrame, \
+                         'startFrame': startFrame}
+            results = np.zeros((1,), dtype=np.object)
+            results[0] = results_
+            sio.savemat('results/'+params.video[i]+'_SimaFC_MXNet.mat', {'results' : results})
 
 
-def _compile_results(gt, bboxes, dist_threshold):
+def _compile_results(gt, bboxes, dist_threshold, iou_threshold):
     l = np.size(bboxes, 0)
     gt4 = np.zeros((l, 4))
     new_distances = np.zeros(l)
     new_ious = np.zeros(l)
-    n_thresholds = 50
-    precisions_ths = np.zeros(n_thresholds)
+    n_iou = 20
+#    precisions_ths = np.zeros(n_thresholds)
+    iou_ths = np.zeros(n_iou)
 
     for i in range(l):
         gt4[i, :] = _region_to_bbox(gt[i, :], center=False)
@@ -93,21 +117,16 @@ def _compile_results(gt, bboxes, dist_threshold):
         new_ious[i] = _compute_iou(bboxes[i, :], gt4[i, :])
 
     # what's the percentage of frame in which center displacement is inferior to given threshold? (OTB metric)
-    precision = sum(new_distances < dist_threshold)/np.size(new_distances) * 100
-
-    # find above result for many thresholds, then report the AUC
-    thresholds = np.linspace(0, 25, n_thresholds+1)
-    thresholds = thresholds[-n_thresholds:]
-    # reverse it so that higher values of precision goes at the beginning
-    thresholds = thresholds[::-1]
-    for i in range(n_thresholds):
-        precisions_ths[i] = sum(new_distances < thresholds[i])/np.size(new_distances)
-
-    # integrate over the thresholds
-    precision_auc = np.trapz(precisions_ths)    
+    precision = sum(new_distances < dist_threshold)/np.size(new_distances) * 100   
 
     # per frame averaged intersection over union (OTB metric)
     iou = np.mean(new_ious) * 100
+    iou_thresholds = np.linspace(0, 1, n_iou+1)
+#    iou_thresholds = iou_thresholds[-n_iou:]
+#    iou_thresholds = iou_thresholds[::-1]
+    for i in range(n_iou):
+        iou_ths[i] = sum(new_ious > iou_thresholds[i])/np.size(new_ious)
+    precision_auc = np.trapz(iou_ths) / n_iou * 100
 
     return l, precision, precision_auc, iou
 
@@ -126,7 +145,7 @@ def _load_video_info(video, params):
     gt_file = os.path.join(video_folder, 'groundtruth_rect.txt')
     gt = np.array(np.genfromtxt(gt_file, delimiter=','))
     n_frames = len(frame_name_list)
-    assert n_frames == len(gt), 'Number of frames and number of GT lines should be equal.'
+    #assert n_frames == len(gt), 'Number of frames and number of GT lines should be equal.'
 
     return gt, frame_name_list, frame_sz, n_frames
 
