@@ -5,8 +5,7 @@
 1) Set `root_dataset` in `hyperparams/params.json` to your dataset path
 1) Set `all` from `hyperparams/params.json` to `true` or to set one or more specific sequences (e.g. `Basketball` and/or `Soccer`) in `video` with setting `all` to `false`
 1) See if you are happy with the default parameters in `hyperparams/params.json`
-1) Call the main script (within an active virtualenv session)
-`python run_tracker.py`
+1) Call the main script `python run_tracker.py`
 
 ## AUC (%) on OTB
 | Tracker           | OTB2013       | OTB2015       |
