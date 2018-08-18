@@ -22,8 +22,8 @@ def main():
     params = paramsInitial()
     siamfc = siamese.SiamFC()
     siamfc.collect_params().initialize(ctx=ctx)
-    siamfc.net.load_params('./hyperparams/siamfc_net.params')
-    siamfc.bn_final.load_params('./hyperparams/siamfc_bn.params')
+    siamfc.net.load_params('./nets/siamfc_net.params')
+    siamfc.bn_final.load_params('./nets/siamfc_bn.params')
     # iterate through all videos of evaluation.dataset
     if params.all is True:
         dataset_folder = os.path.join(params.root_dataset)
