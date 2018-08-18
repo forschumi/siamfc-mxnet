@@ -22,8 +22,8 @@ def main():
     params = paramsInitial()
     siamfc = siamese.SiamFC()
     siamfc.collect_params().initialize(ctx=ctx)
-    siamfc.net.load_params('./nets/siamfc_net.params')
-    siamfc.bn_final.load_params('./nets/siamfc_bn.params')
+    siamfc.net.load_params('./hyperparams/siamfc_net.params')
+    siamfc.bn_final.load_params('./hyperparams/siamfc_bn.params')
     # iterate through all videos of evaluation.dataset
     if params.all is True:
         dataset_folder = os.path.join(params.root_dataset)
@@ -43,13 +43,13 @@ def main():
                 startFrame = params.startFrame
             pos_x, pos_y, target_w, target_h = _region_to_bbox(gt[params.startFrame], center = True)
             bboxes, speed_ = tracker(siamfc, params, frame_name_list, pos_x, pos_y, target_w, target_h, ctx=ctx)
-            lengths[i], precisions[i], precisions_auc[i], ious[i] = _compile_results(gt, bboxes, params.dist_threshold)
+            lengths[i], precisions[i], precisions_auc[i], ious[i] = _compile_results(gt, bboxes, params.dist_threshold, params.iou_threshold)
             speed[i] = speed_
             print(str(i+1) + ' -- ' + videos_list[i])
             print(' -- Precision (%d px): %.2f' % (params.dist_threshold, precisions[i]))            
             print(' -- IOU: %.2f' % ious[i])
             print(' -- Speed: %.2f' % speed_)
-            print(' -- Precisions AUC: %.2f' % (params.iou_threshold, precisions_auc[i]))
+            print(' -- Precisions AUC (%.1f): %.2f' % (params.iou_threshold, precisions_auc[i]))
             print(' --')
             print()
             results_ =  {'type':'rect', 'res': bboxes, 'fps': speed_, \
@@ -67,7 +67,7 @@ def main():
         print(' -- Precision (%d px): %.2f' % (params.dist_threshold, mean_precision)) 
         print(' -- IOU: %.2f' % mean_iou)
         print(' -- Speed: %.2f' % mean_speed)
-        print(' -- Precisions AUC: %.2f' % (params.iou_threshold, mean_precision_auc))
+        print(' -- Precisions AUC (%.1f): %.2f' % (params.iou_threshold, mean_precision_auc))
         print(' --')
         print()
 
@@ -108,7 +108,6 @@ def _compile_results(gt, bboxes, dist_threshold, iou_threshold):
     new_distances = np.zeros(l)
     new_ious = np.zeros(l)
     n_iou = 20
-#    precisions_ths = np.zeros(n_thresholds)
     iou_ths = np.zeros(n_iou)
 
     for i in range(l):
@@ -122,8 +121,6 @@ def _compile_results(gt, bboxes, dist_threshold, iou_threshold):
     # per frame averaged intersection over union (OTB metric)
     iou = np.mean(new_ious) * 100
     iou_thresholds = np.linspace(0, 1, n_iou+1)
-#    iou_thresholds = iou_thresholds[-n_iou:]
-#    iou_thresholds = iou_thresholds[::-1]
     for i in range(n_iou):
         iou_ths[i] = sum(new_ious > iou_thresholds[i])/np.size(new_ious)
     precision_auc = np.trapz(iou_ths) / n_iou * 100
