@@ -82,7 +82,7 @@ def tracker(siamfc, params, frame_name_list, pos_x, pos_y, target_w, target_h, c
         target_h = (1 - params.scaleLR) * target_h + params.scaleLR * scaledTarget_y[newScale]
         bboxes[i-params.startFrame, :] = pos_x + 1 - target_w / 2, pos_y + 1 - target_h / 2, target_w, target_h
         
-		if params.visualization:
+        if params.visualization:
             show_frame(x.asnumpy(), bboxes[i-params.startFrame, :], 1)
 		
     t_elapsed = time.time() - t_start + 1
