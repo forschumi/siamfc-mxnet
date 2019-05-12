@@ -9,6 +9,8 @@
 1) The results.mat can be found in `results` which you can run on OTB
 
 Results on test sequence:
+
+
 ![tracking_girl](https://user-images.githubusercontent.com/3716307/57589277-b96ed400-755c-11e9-9f83-5b0e9c04b0a0.gif)
 
 ## AUC (%) on OTB
